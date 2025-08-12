@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>예문여고 우산 대여 서비스</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
+    
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      background: #f0f4f8;
+      color: #333;
+      padding: 0 20px 40px 20px;
+      text-align: center;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 6px;
+      font-weight: 700;
+      letter-spacing: 1.3px;
+      font-size: 40px;
+      font-style: bold;
+    }
+    h2 {
+      color: #2980b9;
+      margin: 0;
+      font-weight: 600;
+      letter-spacing: 1.1px;
+      font-size: 30px;
+    }
+    h3 {
+      margin-top: 10px;
+      color: #555;
+      font-weight: 500;
+      font-size: 16px;
+    }
+    .form-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 30px 0 20px 0;
+      text-align: left;
+    }
+    input[type=text], input[type=number] {
+      padding: 10px 15px;
+      border-radius: 6px;
+      border: 1.5px solid #bbb;
+      font-size: 16px;
+      width: 150px;
+      transition: border-color 0.3s;
+    }
+    input[type=text]:focus, input[type=number]:focus {
+      border-color: #2980b9;
+      outline: none;
+    }
+    button {
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      padding: 11px 25px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      box-shadow: 0 3px 6px rgba(41,128,185,0.4);
+      transition: background-color 0.3s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1c5980;
+    }
+    button:disabled {
+      background-color: #7f8c8d;
+      cursor: default;
+      box-shadow: none;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    thead {
+      background-color: #2980b9;
+      color: white;
+      font-weight: 600;
+      font-size: 15px;
+    }
+    th, td {
+      text-align: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid #ddd;
+      font-size: 15px;
+    }
+    tbody tr:hover {
+      background-color: #f9fbfd;
+    }
+  </style>
+</head>
+<body>
+  <h1>예문여고 URS</h1>
+  <h2>우산 대여 서비스</h2>
+  <h3>2025 예문여고 학생회</h3>
+  
+  <div class="form-group">
+    <input type="text" id="name" placeholder="이름" />
+    <input type="text" id="class" placeholder="학번" />
+    <input type="number" id="count" placeholder="대여 개수" min="1" value="1" />
+    <button onclick="borrowUmbrella()">대여하기</button>
+  </div>
+  
+  <table id="borrowTable">
+    <thead>
+      <tr>
+        <th>이름</th><th>학번</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>벌금</th><th>반납 처리</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  
+  <script>
+    const dailyFine = 200; // 1일 연체 벌금
+    const STORAGE_KEY = 'umbrellaBorrowList';
+    
+    function formatDate(date) {
+      return date.toISOString().slice(0,10);
+    }
+    
+    function loadData() {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (!data) return [];
+      try {
+        return JSON.parse(data);
+      } catch {
+        return [];
+      }
+    }
+    
+    function saveData(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    }
+    
+    function renderTable() {
+      const tbody = document.querySelector('#borrowTable tbody');
+      tbody.innerHTML = '';
+      const list = loadData();
+      list.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${item.name}</td>
+          <td>${item.cls}</td>
+          <td>${item.count}</td>
+          <td>${item.borrowDate}</td>
+          <td>${item.returnDate || '-'}</td>
+          <td>${item.fine || 0}원</td>
+          <td>${item.returned ? '<button disabled>반납 완료</button>' : `<button onclick="returnUmbrella(${index})">반납</button>`}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+    
+    function borrowUmbrella() {
+      const name = document.getElementById('name').value.trim();
+      const cls = document.getElementById('class').value.trim();
+      const count = parseInt(document.getElementById('count').value);
+      if (!name || !cls || !count || count < 1) {
+        alert("이름, 반, 대여 개수를 정확히 입력해주세요.");
+        return;
+      }
+      const borrowDate = formatDate(new Date());
+      const list = loadData();
+      list.push({
+        name,
+        cls,
+        count,
+        borrowDate,
+        returnDate: null,
+        fine: 0,
+        returned: false
+      });
+      saveData(list);
+      renderTable();
+      
+      document.getElementById('name').value = '';
+      document.getElementById('class').value = '';
+      document.getElementById('count').value = 1;
+    }
+    
+    function returnUmbrella(index) {
+      const list = loadData();
+      const item = list[index];
+      if (!item || item.returned) return;
+      
+      const borrowDate = new Date(item.borrowDate);
+      const returnDate = new Date();
+      item.returnDate = formatDate(returnDate);
+      
+      const diffTime = returnDate - borrowDate;
+      const diffDays = Math.floor(diffTime / (1000*60*60*24));
+      item.fine = diffDays > 1 ? (diffDays -1)*dailyFine : 0;
+      item.returned = true;
+      
+      saveData(list);
+      renderTable();
+    }
+    
+    window.onload = () => {
+      renderTable();
+    };
+  </script>
+</body>
+</html>
