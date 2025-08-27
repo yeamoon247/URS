@@ -54,7 +54,7 @@
   <table id="borrowTable">
     <thead>
       <tr>
-        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>반납 처리</th>
+        <th>이름</th><th>학반</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>반납 처리</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -65,7 +65,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <script>
-    // Firebase 설정 (네 Firebase Console → 웹앱 등록에서 복사한 값 넣기!)
+    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyCzjsr7B5DkrXWoaY7rM6WcleR7Z4MgCFM",
       authDomain: "ym-urs.firebaseapp.com",
@@ -76,11 +76,11 @@
       measurementId: "G-PVLSV7B95S"
     };
 
-    // Firebase 초기화
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     const dailyFine = 200; // 하루 연체 벌금
+    const returnPassword = "9876"; // 🔑 반납 비밀번호
 
     function formatDate(date) {
       return date.toISOString().slice(0, 10);
@@ -112,89 +112,23 @@
     }
 
     function returnUmbrella(id, borrowDateStr) {
-   <script>
-  const dailyFine = 100; // 하루 연체 벌금
-  const returnPassword = "9876"; // 🔑 반납 처리용 비밀번호 (원하는 걸로 바꿔주세요!)
+      const inputPw = prompt("반납 비밀번호를 입력하세요:");
+      if (inputPw !== returnPassword) {
+        alert("비밀번호가 틀렸습니다!");
+        return;
+      }
 
-  function formatDate(date) {
-    return date.toISOString().slice(0, 10);
-  }
+      const borrowDate = new Date(borrowDateStr);
+      const returnDate = new Date();
+      const diffTime = returnDate - borrowDate;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      const fine = diffDays > 1 ? (diffDays - 1) * dailyFine : 0;
 
-  function borrowUmbrella() {
-    const name = document.getElementById('name').value.trim();
-    const cls = document.getElementById('cls').value.trim();
-    const count = parseInt(document.getElementById('count').value);
-
-    if (!name || !cls || !count || count < 1) {
-      alert("이름, 반, 대여 개수를 정확히 입력해주세요.");
-      return;
-    }
-
-    db.collection("borrowList").add({
-      name,
-      cls,
-      count,
-      borrowDate: formatDate(new Date()),
-      returnDate: null,
-      fine: 0,
-      returned: false
-    }).then(() => {
-      document.getElementById('name').value = '';
-      document.getElementById('cls').value = '';
-      document.getElementById('count').value = 1;
-    });
-  }
-
-  function returnUmbrella(id, borrowDateStr) {
-    // 🔑 비밀번호 확인 추가
-    const inputPw = prompt("반납 비밀번호를 입력하세요:");
-    if (inputPw !== returnPassword) {
-      alert("비밀번호가 틀렸습니다!");
-      return;
-    }
-
-    const borrowDate = new Date(borrowDateStr);
-    const returnDate = new Date();
-    const diffTime = returnDate - borrowDate;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    const fine = diffDays > 1 ? (diffDays - 1) * dailyFine : 0;
-
-    db.collection("borrowList").doc(id).update({
-      returnDate: formatDate(returnDate),
-      fine,
-      returned: true
-    });
-  }
-
-  function renderTable(list) {
-    const tbody = document.querySelector('#borrowTable tbody');
-    tbody.innerHTML = '';
-    list.forEach(item => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${item.name}</td>
-        <td>${item.cls}</td>
-        <td>${item.count}</td>
-        <td>${item.borrowDate}</td>
-        <td>${item.returnDate || '-'}</td>
-        <td>${item.fine || 0}원</td>
-        <td>
-          ${item.returned 
-            ? '<button disabled>반납 완료</button>' 
-            : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // 실시간 Firestore 반영
-  db.collection("borrowList").orderBy("borrowDate", "desc").onSnapshot(snapshot => {
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderTable(data);
-  });
-</script>
-
+      db.collection("borrowList").doc(id).update({
+        returnDate: formatDate(returnDate),
+        fine,
+        returned: true
+      });
     }
 
     function renderTable(list) {
@@ -209,13 +143,16 @@
           <td>${item.borrowDate}</td>
           <td>${item.returnDate || '-'}</td>
           <td>${item.fine || 0}원</td>
-          <td>${item.returned ? '<button disabled>반납 완료</button>' : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}</td>
+          <td>
+            ${item.returned 
+              ? '<button disabled>반납 완료</button>' 
+              : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}
+          </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // 실시간 Firestore 반영
     db.collection("borrowList").orderBy("borrowDate", "desc").onSnapshot(snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderTable(data);
@@ -223,6 +160,3 @@
   </script>
 </body>
 </html>
-
-
-
