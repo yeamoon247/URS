@@ -46,7 +46,7 @@
   
   <div class="form-group">
     <input type="text" id="name" placeholder="이름" />
-    <input type="text" id="cls" placeholder="반" />
+    <input type="text" id="cls" placeholder="학반번호" />
     <input type="number" id="count" placeholder="대여 개수" min="1" value="1" />
     <button onclick="borrowUmbrella()">대여하기</button>
   </div>
@@ -54,7 +54,7 @@
   <table id="borrowTable">
     <thead>
       <tr>
-        <th>이름</th><th>반</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>벌금</th><th>반납 처리</th>
+        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>반납 처리</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -65,7 +65,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
   <script>
-    // Firebase 설정 (네 Firebase Console → 웹앱 등록에서 복사한 값 넣기!)
+    // Firebase 설정
     const firebaseConfig = {
       apiKey: "AIzaSyCzjsr7B5DkrXWoaY7rM6WcleR7Z4MgCFM",
       authDomain: "ym-urs.firebaseapp.com",
@@ -76,15 +76,13 @@
       measurementId: "G-PVLSV7B95S"
     };
 
-    // Firebase 초기화
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const dailyFine = 200; // 하루 연체 벌금
+    const dailyFine = 200;          // 하루 연체료
+    const returnPassword = "9876";  // 반납 비밀번호
 
-    function formatDate(date) {
-      return date.toISOString().slice(0, 10);
-    }
+    function formatDate(date) { return date.toISOString().slice(0, 10); }
 
     function borrowUmbrella() {
       const name = document.getElementById('name').value.trim();
@@ -92,14 +90,12 @@
       const count = parseInt(document.getElementById('count').value);
 
       if (!name || !cls || !count || count < 1) {
-        alert("이름, 반, 대여 개수를 정확히 입력해주세요.");
+        alert("이름, 학반번호, 대여 개수를 정확히 입력해주세요.");
         return;
       }
 
       db.collection("borrowList").add({
-        name,
-        cls,
-        count,
+        name, cls, count,
         borrowDate: formatDate(new Date()),
         returnDate: null,
         fine: 0,
@@ -108,21 +104,25 @@
         document.getElementById('name').value = '';
         document.getElementById('cls').value = '';
         document.getElementById('count').value = 1;
-      });
+      }).catch(err => alert("저장 에러: " + err.message));
     }
 
     function returnUmbrella(id, borrowDateStr) {
+      const inputPw = prompt("반납 비밀번호를 입력하세요:");
+      if (inputPw !== returnPassword) {
+        alert("비밀번호가 틀렸습니다!");
+        return;
+      }
+
       const borrowDate = new Date(borrowDateStr);
       const returnDate = new Date();
-      const diffTime = returnDate - borrowDate;
-      const diffDays = Math.floor(diffTime / (1000*60*60*24));
+      const diffDays = Math.floor((returnDate - borrowDate) / (1000 * 60 * 60 * 24));
       const fine = diffDays > 1 ? (diffDays - 1) * dailyFine : 0;
 
       db.collection("borrowList").doc(id).update({
         returnDate: formatDate(returnDate),
-        fine,
-        returned: true
-      });
+        fine, returned: true
+      }).catch(err => alert("반납 처리 에러: " + err.message));
     }
 
     function renderTable(list) {
@@ -137,18 +137,21 @@
           <td>${item.borrowDate}</td>
           <td>${item.returnDate || '-'}</td>
           <td>${item.fine || 0}원</td>
-          <td>${item.returned ? '<button disabled>반납 완료</button>' : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}</td>
-        `;
+          <td>${item.returned 
+              ? '<button disabled>반납 완료</button>' 
+              : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}
+          </td>`;
         tbody.appendChild(tr);
       });
     }
 
-    // 실시간 Firestore 반영
-    db.collection("borrowList").orderBy("borrowDate", "desc").onSnapshot(snapshot => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      renderTable(data);
-    });
+    db.collection("borrowList").orderBy("borrowDate", "desc").onSnapshot(
+      snapshot => {
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderTable(data);
+      },
+      err => alert("데이터 불러오기 에러: " + err.message)
+    );
   </script>
 </body>
 </html>
-
