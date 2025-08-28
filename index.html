@@ -7,7 +7,7 @@
     @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic&display=swap');
     body {
       font-family: 'Nanum Gothic', sans-serif;
-      max-width: 700px;
+      max-width: 750px;
       margin: 40px auto;
       background: #f0f4f8;
       color: #333;
@@ -54,7 +54,9 @@
   <table id="borrowTable">
     <thead>
       <tr>
-        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>반납 처리</th>
+        <th>이름</th><th>학반번호</th><th>대여 개수</th>
+        <th>대여 날짜</th><th>대여일수</th><th>반납 날짜</th>
+        <th>연체료</th><th>반납 처리</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -97,7 +99,7 @@
         name,
         cls,
         count,
-        borrowDate: new Date(),   // 🔥 Date 타입 저장
+        borrowDate: new Date(),
         returnDate: null,
         fine: 0,
         returned: false
@@ -122,7 +124,7 @@
       const fine = diffDays > 1 ? (diffDays - 1) * dailyFine : 0;
 
       db.collection("borrowList").doc(id).update({
-        returnDate: returnDate, // 🔥 Date 타입 저장
+        returnDate: returnDate,
         fine,
         returned: true
       });
@@ -132,18 +134,30 @@
       const tbody = document.querySelector('#borrowTable tbody');
       tbody.innerHTML = '';
       list.forEach(item => {
+        const borrowDate = item.borrowDate?.toDate();
+        const returnDate = item.returnDate ? item.returnDate.toDate() : null;
+
+        // 📅 대여일수 계산
+        let daysBorrowed = "-";
+        if (borrowDate) {
+          const endDate = returnDate || new Date();
+          const diffTime = endDate - borrowDate;
+          daysBorrowed = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1; // 시작일 포함
+        }
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td>${item.name}</td>
           <td>${item.cls}</td>
           <td>${item.count}</td>
-          <td>${item.borrowDate ? item.borrowDate.toDate().toISOString().slice(0,10) : '-'}</td>
-          <td>${item.returnDate ? item.returnDate.toDate().toISOString().slice(0,10) : '-'}</td>
+          <td>${borrowDate ? borrowDate.toISOString().slice(0,10) : '-'}</td>
+          <td>${daysBorrowed}일째</td>
+          <td>${returnDate ? returnDate.toISOString().slice(0,10) : '-'}</td>
           <td>${item.fine || 0}원</td>
           <td>
             ${item.returned 
               ? '<button disabled>반납 완료</button>' 
-              : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate.toDate()}')">반납</button>`}
+              : `<button onclick="returnUmbrella('${item.id}', '${borrowDate}')">반납</button>`}
           </td>
         `;
         tbody.appendChild(tr);
