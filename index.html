@@ -47,7 +47,7 @@
   
   <div class="form-group">
     <input type="text" id="name" placeholder="이름" />
-    <input type="text" id="cls" placeholder="학반번호" />
+    <input type="text" id="cls" placeholder="학번" />
     <input type="number" id="count" placeholder="대여 개수" min="1" value="1" />
     <button onclick="borrowUmbrella()">대여하기</button>
   </div>
@@ -55,7 +55,7 @@
   <table id="borrowTable">
     <thead>
       <tr>
-        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>관리</th>
+        <th>이름</th><th>학번</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>관리</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -117,7 +117,7 @@
     function returnUmbrella(id, borrowDateStr) {
       const inputPw = prompt("반납 비밀번호를 입력하세요:");
       if (inputPw !== returnPassword) {
-        alert("비밀번호가 틀렸습니다!");
+        alert("비밀번호가 틀렸습니다.");
         return;
       }
 
@@ -179,4 +179,5 @@
   </script>
 </body>
 </html>
+
 
