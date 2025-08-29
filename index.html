@@ -24,9 +24,10 @@
     }
     input[type=text]:focus, input[type=number]:focus { border-color: #2980b9; outline: none; }
     button {
-      background-color: #2980b9; color: white; border: none; padding: 11px 25px;
-      border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 600;
+      background-color: #2980b9; color: white; border: none; padding: 11px 18px;
+      border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;
       box-shadow: 0 3px 6px rgba(41,128,185,0.4); transition: background-color 0.3s;
+      margin: 2px;
     }
     button:hover:not(:disabled) { background-color: #1c5980; }
     button:disabled { background-color: #7f8c8d; cursor: default; box-shadow: none; }
@@ -54,7 +55,7 @@
   <table id="borrowTable">
     <thead>
       <tr>
-        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>반납 처리</th>
+        <th>이름</th><th>학반번호</th><th>대여 개수</th><th>대여 날짜</th><th>반납 날짜</th><th>연체료</th><th>관리</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -75,11 +76,14 @@
       appId: "1:740160344430:web:63038da30171202863717f",
       measurementId: "G-PVLSV7B95S"
     };
+
+    // Firebase 초기화
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
     const dailyFine = 200; // 하루 연체 벌금
-    const returnPassword = "9876"; // 반납 처리용 비밀번호
+    const returnPassword = "9876"; // 반납 비밀번호
+    const deletePassword = "4321"; // 삭제 비밀번호
 
     function formatDate(date) {
       return date.toISOString().slice(0, 10);
@@ -120,7 +124,7 @@
       const borrowDate = new Date(borrowDateStr);
       const returnDate = new Date();
       const diffTime = returnDate - borrowDate;
-      const diffDays = Math.floor(diffTime / (1000*60*60*24));
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const fine = diffDays > 1 ? (diffDays - 1) * dailyFine : 0;
 
       db.collection("borrowList").doc(id).update({
@@ -130,11 +134,23 @@
       });
     }
 
+    function deleteUmbrella(id) {
+      const inputPw = prompt("삭제 비밀번호를 입력하세요:");
+      if (inputPw !== deletePassword) {
+        alert("비밀번호가 틀렸습니다!");
+        return;
+      }
+
+      if (confirm("정말로 이 기록을 삭제하시겠습니까?")) {
+        db.collection("borrowList").doc(id).delete()
+          .then(() => alert("삭제되었습니다."))
+          .catch(err => console.error(err));
+      }
+    }
+
     function renderTable(list) {
       const tbody = document.querySelector('#borrowTable tbody');
       tbody.innerHTML = '';
-      // 최근 대여자가 맨 위
-      list.sort((a,b) => new Date(b.borrowDate) - new Date(a.borrowDate));
       list.forEach(item => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -144,19 +160,23 @@
           <td>${item.borrowDate}</td>
           <td>${item.returnDate || '-'}</td>
           <td>${item.fine || 0}원</td>
-          <td>${item.returned 
-            ? '<button disabled>반납 완료</button>' 
-            : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}</td>
+          <td>
+            ${item.returned 
+              ? '<button disabled>반납 완료</button>' 
+              : `<button onclick="returnUmbrella('${item.id}', '${item.borrowDate}')">반납</button>`}
+            <button onclick="deleteUmbrella('${item.id}')">삭제</button>
+          </td>
         `;
         tbody.appendChild(tr);
       });
     }
 
-    // 실시간 Firestore 반영
-    db.collection("borrowList").onSnapshot(snapshot => {
+    // Firestore 실시간 반영
+    db.collection("borrowList").orderBy("borrowDate", "desc").onSnapshot(snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       renderTable(data);
     });
   </script>
 </body>
 </html>
+
